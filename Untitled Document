@@ -1,0 +1,82 @@
+# linux-ptorch-tensorflow
+
+本篇文章记录在linux上安装ptorch和tensorflow
+
+1.安装linux
+2.禁用旧的显卡驱动
+  禁用旧的显卡驱动；切换到/etc/modprobe.d/，新建文件nvidia-installer-disable-nouveau.conf，输入以下内容，，保存退出；
+                                        blacklist nouveau
+                                        options nouveau modeset=0
+  在文件/etc/default/grub的最后，添加一行，如下所示；
+                                        rdblacklist nouveau
+                                        nouveau.modeset=0
+3.安装cuda
+  切换到tty（Ctrl+Alt+F1），关闭显示器管理（sudo stop lightdm），运行安装驱动命令 （sudo sh ./NVIDIA-Linux-x86_64-352.30.run）。opengl选择不要安装。
+4.配置环境变量
+  操作1：将以下内容添加到文件/etc/profile的最后面，保存后，执行命令source /etc/profile，使配置生效。
+                                        PATH=/usr/local/cuda/bin:$PATH 
+                                        export PATH 
+                                        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+                                        export LD_ LIBRARY_PATH 
+
+  操作2：在目录/etc/ld.so.conf.d/下新建文件 cuda.conf，并添加如下内容。然后执行命令sudo ldconfig，使配置生效。
+  解释：下面第一行是上面提到的cuda库文件路径，后面3行是后来综合调试错误和其它博文总结得到的（我遇到过一个错误，就是安装完cudnn后，cudnn是放在/usr/local/cuda/lib64下的，当我安完tensorflow后，import报错，总是找不到刚才路径下的cudnn文件，不知道是不是和下面的多出来的三个路径相管？）。所以，最好加上，省的出错哦。。。
+                                        /usr/local/cuda/lib64
+                                        /lib
+                                        /usr/lib
+                                        /usr/lib32
+  检查cuda是否配置好,在命令行中执行以下命令。
+  #输入以下命令，检查是否配置好。如下图所示，说明安装好。
+                                        nvcc --version
+5.安装CUDA SAMPLES
+  为什么安装cuda samples?
+  一方面为了后面学习cuda使用，另一方面，可以检验cuda是否真的安装成功。如果cuda samples全部编译通过，没有一个Error（Warning忽略），那么就说明成功地安装了cuda。但如果没有通过编译，或者虽然最后一行显示PASS，但是编译过程中有ERROR，请自行GOOGLE解决之后，再向下安装，否则失之毫厘谬以千里！！！
+   make时，请使用make -j，可以最大限度的使用cpu编译，加快编译的速度。
+                                        # 切换到cuda-samples所在目录
+                                        # 注意，换成自己的路径
+                                        cd /home/xuezhisd/NVIDIA_CUDA-7.0_Samples
+                                        # 编译 make （安装命令 sudo apt-get install cmake)
+                                        make –j 
+                                        # 编译完毕，切换release目录
+                                        cd ./bin/x86_64/linux/release
+                                        # 检验是否成功
+                                        # 运行实例 ./deviceQuery
+                                        ./deviceQuery 
+                                        # 可以认真看看自行结果，它显示了你的NVIDIA显卡的相关信息。
+6.安装cudnn
+  安装cudnn比较简单，简单地说，就是复制几个文件：库文件和头文件。将cudnn的头文件复制到cuda安装路径的include路径下，将cudnn的库文件复制到cuda安装路径的lib64路径下。
+                                        #解压文件
+                                        tar -zxvf cudnn-6.5-linux-x64-v2.tgz
+                                        #切换路径
+                                        cd cudnn-6.5-linux-x64-v2
+                                        #复制lib文件到cuda安装路径下的lib64/
+                                        sudo cp lib* /usr/local/cuda/lib64/
+                                        #复制头文件
+                                        sudo cp cudnn.h /usr/local/cuda/include/
+                                        
+                                        #更新软连接
+                                        cd /usr/local/cuda/lib64/ 
+                                        sudo rm -rf libcudnn.so libcudnn.so.6.5 
+                                        sudo ln -s libcudnn.so.6.5.48 libcudnn.so.6.5 
+                                        sudo ln -s libcudnn.so.6.5 libcudnn.so 
+7.安装Anaconda
+  按照Anaconda官网的知道安装，安装之后更新：
+                                        更新所有库：
+                                        conda update --all
+                                        更新 conda 自身：
+                                        conda update conda
+                                        更新 anaconda 自身：
+                                        conda update anaconda
+8.安装pytorch：
+  按照pytorch官网指导在conda下安装，之前试过别的命令去安装，总是出错，这个没有错误：
+                                        conda install pytorch torchvision cuda80 -c soumith
+9.安装tensorflow
+  本来是想用conda安装于是运行了下面的代码：
+                                        conda create -n tensorflow
+                                        source activate tensorflow
+                                        pip install --ignore-installed --upgrade https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.3.0-cp34-cp34m-linux_x86_64.whl
+   前两句运行没问题，最后一句报错，说是不支持这个版本，可能是官网有点老。然后我就索性用了下面的命令： 
+                                        pip install tensorflow-gpu
+   成功！
+ 
+
